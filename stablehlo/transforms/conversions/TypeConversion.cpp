@@ -19,6 +19,8 @@ limitations under the License.
 #include <optional>
 
 #include "llvm/Support/Casting.h"
+#include "mlir/Dialect/Quant/IR/Quant.h"
+#include "mlir/Dialect/Quant/IR/QuantTypes.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/BuiltinTypeInterfaces.h"
@@ -42,6 +44,14 @@ Type convertInteger(IntegerType intType) {
 Type convertShapedType(ShapedType shapedType) {
   if (auto intType = llvm::dyn_cast<IntegerType>(shapedType.getElementType()))
     return shapedType.clone(convertInteger(intType));
+  if (auto quantTy = dyn_cast<quant::UniformQuantizedPerAxisType>(
+          shapedType.getElementType()))
+    return RankedTensorType::get(shapedType.getShape(),
+                                 quantTy.getStorageType());
+  if (auto quantTy =
+          dyn_cast<quant::UniformQuantizedType>(shapedType.getElementType()))
+    return RankedTensorType::get(shapedType.getShape(),
+                                 quantTy.getStorageType());
   return shapedType;
 }
 
@@ -49,7 +59,9 @@ Value materializeCastFromIllegal(OpBuilder& builder, Type type,
                                  ValueRange inputs, Location loc) {
   Type fromType = getElementTypeOrSelf(inputs[0].getType());
   Type toType = getElementTypeOrSelf(type);
-  if ((!fromType.isSignedInteger() && !fromType.isUnsignedInteger()) ||
+  if ((!fromType.isSignedInteger() && !fromType.isUnsignedInteger() &&
+       !isa<quant::UniformQuantizedPerAxisType, quant::UniformQuantizedType>(
+           fromType)) ||
       !toType.isSignlessInteger())
     return Value();
   // Use unrealized conversion casts to do signful->signless conversions.
@@ -62,7 +74,9 @@ Value materializeCastToIllegal(OpBuilder& builder, Type type, ValueRange inputs,
   Type fromType = getElementTypeOrSelf(inputs[0].getType());
   Type toType = getElementTypeOrSelf(type);
   if (!fromType.isSignlessInteger() ||
-      (!toType.isSignedInteger() && !toType.isUnsignedInteger()))
+      (!toType.isSignedInteger() && !toType.isUnsignedInteger() &&
+       !isa<quant::UniformQuantizedPerAxisType, quant::UniformQuantizedType>(
+           toType)))
     return Value();
   // Use unrealized conversion casts to do signless->signful conversions.
   return UnrealizedConversionCastOp::create(builder, loc, type, inputs[0])
