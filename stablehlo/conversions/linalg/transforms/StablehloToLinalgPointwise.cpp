@@ -105,7 +105,9 @@ FailureOr<PointwiseConversionInfo> checkOperandsAndResults(
   // Check result type compatibility.
   if (!resultTy || resultTy.getRank() != maxRank ||
       !(resultTy.getElementType().isSignlessIntOrFloat() ||
-        isa<ComplexType>(resultTy.getElementType()))) {
+        isa<ComplexType>(resultTy.getElementType()) ||
+        isa<quant::UniformQuantizedType, quant::UniformQuantizedPerAxisType>(
+            resultTy.getElementType()))) {
     return rewriter.notifyMatchFailure(
         op, "mismatched operand/result types or iterator count");
   }

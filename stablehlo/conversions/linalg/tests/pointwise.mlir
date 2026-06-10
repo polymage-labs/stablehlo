@@ -1580,3 +1580,29 @@ func.func @float_complex(%lhs: tensor<2x2xf32>, %rhs: tensor<2x2xf32>) -> tensor
   %0 = "stablehlo.complex"(%lhs, %rhs) : (tensor<2x2xf32>, tensor<2x2xf32>) -> tensor<2x2xcomplex<f32>>
   func.return %0 : tensor<2x2xcomplex<f32>>
 }
+
+// -----
+
+// Test to check type conversion on quantized element types.
+// If given element type is UniformQuantizedType or UniformQuantizedPerAxisType
+// then it should be converted to the corresponding storage type.
+
+// CHECK-LABEL:  func.func @bitcast_convert_to_quantize_per_axis
+// CHECK-SAME: (%[[ARG:.*]]: tensor<1x1x32x2xi8>) -> tensor<1x1x32x2x!quant.uniform<i8<-127:127>:f32:3, {0.04724409431219101:-1,0.537244094312191:2}>>
+func.func @bitcast_convert_to_quantize_per_axis(%arg0: tensor<1x1x32x2xi8>) -> tensor<1x1x32x2x!quant.uniform<i8<-127:127>:f32:3, {0.04724409431219101:-1,0.537244094312191:2}>> {
+  %12 = stablehlo.bitcast_convert %arg0 : (tensor<1x1x32x2xi8>) -> tensor<1x1x32x2x!quant.uniform<i8<-127:127>:f32:3, {0.04724409431219101:-1,0.537244094312191:2}>>
+  return %12 : tensor<1x1x32x2x!quant.uniform<i8<-127:127>:f32:3, {0.04724409431219101:-1,0.537244094312191:2}>>
+}
+// CHECK-NEXT: %[[CASTED_ARG:.*]] = builtin.unrealized_conversion_cast %[[ARG]] : tensor<1x1x32x2xi8> to tensor<1x1x32x2x!quant.uniform<i8<-127:127>:f32:3, {0.04724409431219101:-1,0.537244094312191:2}>>
+// CHECK-NEXT: return %[[CASTED_ARG]] : tensor<1x1x32x2x!quant.uniform<i8<-127:127>:f32:3, {0.04724409431219101:-1,0.537244094312191:2}>>
+
+// -----
+
+// CHECK-LABEL: func.func @bitcast_convert_from_quantize_per_tensor
+// CHECK-SAME: (%[[ARG:.*]]: tensor<8x8x4090x506x32x!quant.uniform<i8<-127:127>:f32, 0.04724409431219101:-1>>) -> tensor<8x8x4090x506x32xi8>
+func.func @bitcast_convert_from_quantize_per_tensor(%arg0: tensor<8x8x4090x506x32x!quant.uniform<i8<-127:127>:f32, 0.04724409431219101:-1>>) -> tensor<8x8x4090x506x32xi8> {
+  %2 = stablehlo.bitcast_convert %arg0 : (tensor<8x8x4090x506x32x!quant.uniform<i8<-127:127>:f32, 0.04724409431219101:-1>>) -> tensor<8x8x4090x506x32xi8>
+  return %2 : tensor<8x8x4090x506x32xi8>
+}
+// CHECK-NEXT: %[[CASTED_ARG:.*]] = builtin.unrealized_conversion_cast %[[ARG]] : tensor<8x8x4090x506x32x!quant.uniform<i8<-127:127>:f32, 0.04724409431219101:-1>> to tensor<8x8x4090x506x32xi8>
+// CHECK-NEXT: return %[[CASTED_ARG]] : tensor<8x8x4090x506x32xi8>

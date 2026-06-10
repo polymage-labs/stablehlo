@@ -819,8 +819,15 @@ inline Value mapStablehloOpToStdScalarOp<stablehlo::BitcastConvertOp>(
   Type argType = getElementTypeOrSelf(argTypes.front());
   Type resultType = getElementTypeOrSelf(resultTypes.front());
 
-  if (resultType.getIntOrFloatBitWidth() != argType.getIntOrFloatBitWidth())
-    return nullptr;
+  unsigned resultBitWidth =
+      isa<quant::QuantizedType>(resultType)
+          ? cast<quant::QuantizedType>(resultType).getStorageTypeIntegralWidth()
+          : resultType.getIntOrFloatBitWidth();
+  unsigned argBitWidth =
+      isa<quant::QuantizedType>(argType)
+          ? cast<quant::QuantizedType>(argType).getStorageTypeIntegralWidth()
+          : argType.getIntOrFloatBitWidth();
+  if (resultBitWidth != argBitWidth) return nullptr;
 
   return mlir::arith::BitcastOp::create(*b, loc, resultTypes,
                                         adaptor.getOperands());
