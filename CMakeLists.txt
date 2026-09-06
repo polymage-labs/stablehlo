@@ -173,7 +173,12 @@ include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
-add_definitions(${LLVM_DEFINITIONS})
+# `LLVM_DEFINITIONS` is one space-separated string, so handing it to
+# `add_definitions` unsplit makes a single definition out of all of it, whose
+# name is the first flag and whose body is the rest. Split it the way the LLVM
+# subprojects do.
+separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
+add_definitions(${LLVM_DEFINITIONS_LIST})
 
 
 #-------------------------------------------------------------------------------
